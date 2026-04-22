@@ -164,5 +164,221 @@ so the busco scores are very low, we decided to use flye assembly for the downst
 
 
 
+https://github.com/tbenavi1/genomescope2.0?tab=readme-ov-file]]. 
+
+
+     mkdir kmc_tmp
+
+     git clone --recurse-submodules https://github.com/refresh-bio/kmc.git
+     cd kmc
+     make -j32
+ 
+# error message, re install all dependency
+
+     pip3 install Cython
+     pip3 install numpy
+     pip3 install --upgrade setuptools
+
+     sudo apt-get install gcc
+     sudo apt-get install python3-dev
+     sudo apt-get install zlib1g-dev
+
+     pip3 install --upgrade pybind11
+    sudo apt-get install --reinstall python3-dev
+
+     make -j32
+
+
+# genomescope github says the short ares are more accurate. so i will use the short reads in this case. 
+
+# then run with the short reads from gaurav
+
+     ls *.fastq > FILES
+
+     ~/USERS/Yuling/Blasia_Genome/counting_kmer/kmc/bin/./kmc -k21 -t10 -m64 -ci1 -cs10000 @FILES reads ~/USERS/Yuling/Blasia_Genome/counting_kmer/kmc_tmp/ 
+
+ ~/USERS/Yuling/Blasia_Genome/counting_kmer/kmc/bin/./kmc_tools transform ~/USERS/Yuling/Yuling_20June2022/Blasia_helsinki_rawdata_pacbio/Polca/reads histogram reads.histo -cx10000
+
+     Stage 1: 100%
+    Stage 2: 100%
+    1st stage: 4336.78s
+    2nd stage: 1266.27s
+    Total    : 5603.05s
+    Tmp size : 146252MB
+
+    Stats:
+    No. of k-mers below min. threshold :            0
+    No. of k-mers above max. threshold :            1
+    No. of unique k-mers               :   6899548350
+    No. of unique counted k-mers       :   6899548349
+    Total no. of k-mers                : 121494176863
+    Total no. of reads                 :    881330776
+    Total no. of super-k-mers          :  17762376590
+
+    Stage 1: 100%
+Stage 2: 100%
+1st stage: 491.045s
+2nd stage: 102.98s
+Total    : 594.024s
+Tmp size : 22211MB
+
+Stats:
+   No. of k-mers below min. threshold :            0
+   No. of k-mers above max. threshold :            1
+   No. of unique k-mers               :   1252013166
+   No. of unique counted k-mers       :   1252013165
+   Total no. of k-mers                :  19451264885
+   Total no. of reads                 :    150818422
+   Total no. of super-k-mers          :   2659871141
+
+
+
+# counting kmer for the female blasia:
+
+ls /home/ubuntu/USERS/Yuling/C/Blasia_890/HIC/*.fq > file_list.txt
+
+
+~/USERS/Yuling/D/counting_kmer/kmc/bin/kmc \
+  -k21 -t10 -m64 -ci1 -cs10000 \
+  @file_list.txt \
+  reads ~/USERS/Yuling/D/counting_kmer/kmc_tmp/
+
+
+# long reads 
+*********************************************
+Stage 1: 100%
+Stage 2: 100%
+1st stage: 2328.72s
+2nd stage: 1397.34s
+Total    : 3726.06s
+Tmp size : 65649MB
+
+Stats:
+   No. of k-mers below min. threshold :            0
+   No. of k-mers above max. threshold :            0
+   No. of unique k-mers               :  40013835798
+   No. of unique counted k-mers       :  40013835798
+   Total no. of k-mers                :  55669236518
+   Total no. of reads                 :      2971204
+   Total no. of super-k-mers          :   7916980311
+
+
+# hic reads : short reads ?
+
+
+*********************************************************************************************************************
+Stage 1: 33%
+Stage 1: 54%
+Stage 1: 70%
+Stage 1: 76%
+Stage 1: 100%
+
+Stage 2: 83%
+Stage 2: 100%
+1st stage: 6283.5s
+2nd stage: 1751.21s
+Total    : 8034.71s
+Tmp size : 129379MB
+
+Stats:
+   No. of k-mers below min. threshold :            0
+   No. of k-mers above max. threshold :            0
+   No. of unique k-mers               :  12722584679
+   No. of unique counted k-mers       :  12722584679
+   Total no. of k-mers                : 105654261464
+   Total no. of reads                 :    812884974
+   Total no. of super-k-mers          :  15792188552
+
+/home/ubuntu/USERS/Yuling/D/counting_kmer/kmc/bin/kmc_tools transform reads histogram reads.histo
+
+    
+
+## After you have the histogram file, you can run GenomeScope within the online web tool, or at the command line.
+
+# the result is not so good. peter suggested to map the raw reads to the genome assembly and get the mapped reads to do this again.
+
+## using bowtie2 to map the reads to the genome:
+
+     #!/bin/bash
+
+    # Set variables
+     REFERENCE_GENOME="assembly.fasta.PolcaCorrected.FINAL_9scaffolds.fasta"
+     READS_1="All.Illumina.Runs.R1.fastq"
+     READS_2="All.Illumina.Runs.R2.fastq "
+     ALIGNED_SAM="aligned_reads.sam"
+     ALIGNED_BAM="aligned_reads.bam"
+     SORTED_BAM="aligned_reads.sorted.bam"
+     MAPPED_READS_1="mapped_reads_1.fastq"
+     MAPPED_READS_2="mapped_reads_2.fastq"
+
+# Step 1: Index the reference genome
+     bwa index $REFERENCE_GENOME
+
+# Step 2: Align the paired-end reads to the reference genome
+     bwa mem $REFERENCE_GENOME $READS_1 $READS_2 > $ALIGNED_SAM
+
+# Step 3: Convert SAM to BAM
+     samtools view -Sb $ALIGNED_SAM > $ALIGNED_BAM
+
+# Step 4: Sort the BAM file
+     samtools sort $ALIGNED_BAM -o $SORTED_BAM
+
+# Step 5: Extract mapped reads to FASTQ format
+     samtools fastq -F 4 -1 $MAPPED_READS_1 -2 $MAPPED_READS_2 $SORTED_BAM
+
+# Cleanup intermediate files if needed
+     rm $ALIGNED_SAM
+     rm $ALIGNED_BAM
+
+     echo "Mapping and extraction completed."
+
+## with the new mapped reads, i wll re-run the kmer counting again. 
+
+
+# the results of the genome scope is pretty good :
+# need to use version 2.0, it has haploiid choice 
+
+
+GenomeScope version 2.0
+input file = user_uploads/3RJXmuc4VD94olyGHBsC
+output directory = user_data/3RJXmuc4VD94olyGHBsC
+p = 1
+k = 21
+
+property                      min               max               
+Homozygous (a)                100%              100%              
+Genome Haploid Length         379,499,316 bp    382,852,798 bp    
+Genome Repeat Length          170,495,993 bp    172,002,597 bp    
+Genome Unique Length          209,003,323 bp    210,850,201 bp    
+Model Fit                     47.3745%          88.4734%          
+Read Error Rate               0.640819%         0.640819%    
+
+
+
+# female blasia genomescope
+
+GenomeScope version 2.0
+input file = user_uploads/afBEfg7J0gSZsjkopdbu
+output directory = user_data/afBEfg7J0gSZsjkopdbu
+p = 1
+k = 21
+
+property                      min               max               
+Homozygous (a)                100%              100%              
+Genome Haploid Length         553,513,697 bp    Inf bp            
+Genome Repeat Length          216,530,882 bp    Inf bp            
+Genome Unique Length          336,982,814 bp    Inf bp            
+Model Fit                     55.0644%          6.19016%          
+Read Error Rate               0.303887%         0.303887% 
+
+
+# rerun the kmc with different parameter: filter low count to reduce noise 
+
+~/USERS/Yuling/D/counting_kmer/kmc/bin/kmc \
+  -k21 -t10 -m64 -ci2 -cs10000 \
+  @file_list.txt \
+  reads ~/USERS/Yuling/D/counting_kmer/kmc_tmp/
+
+
 
   
