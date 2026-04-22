@@ -1,0 +1,107 @@
+## 1. clean the unmapped reads by using diamond + MEGAN
+
+first, download the database for the diamond, using nr
+
+      wget https://ftp.ncbi.nlm.nih.gov/blast/db/FASTA/nr.gz
+
+
+then build the index for diamond
+
+     diamond makedb --in nr.gz --db nr
+
+run diamond, Align long reads.
+
+     diamond blastx -q unmapped.fasta -d nr.dmnd -o unampped.daa -F 15 -f 100 --range-culling --top 10 -p 12
+
+## 2. Taxonomic and functional binning using megan
+
+download the megan database
+
+     wget https://software-ab.informatik.uni-tuebingen.de/download/megan6/megan-map-Feb2022.db.zip
+
+     unzip megan-map-Feb2022.db.zip
+
+
+download the megan software from the same website
+after downloading, look into this file: MEGAN.vmoptions
+#change the -Xmx8000m into -Xmx120000m
+
+     ~/Yuling_20June2022/Blasia_helsinki_rawdata_pacbio/diamond_rawreads_clean/tools/./daa-meganizer -i unmapped.daa -mdb megan-map-Feb2022.db --longReads
+
+export viridiplantae reads 
+    
+     ~/Yuling_20June2022/Blasia_helsinki_rawdata_pacbio/diamond_rawreads_clean/tools/./read-extractor -i unmapped.daa -o %t_%i.fasta -c Taxonomy -n Viridiplantae
+
+
+next step evaluate the genome bins by using checkm
+
+download the dependency
+download prodigal
+
+     git clone https://github.com/hyattpd/Prodigal.git
+     sudo make install
+     export PRODIGAL_PATH=/home/ubuntu/Yuling_20June2022/Blasia_helsinki_rawdata_pacbio/diamond_rawreads_clean/Prodigal
+
+download the pplacer through conda
+
+     conda activate checkm
+     conda install -c bioconda pplacer
+
+download the hmmer and compile it , export the system path
+
+     tar -xvf hmmer.tar.gz
+     cd hmmer
+     ./configure --prefix=/home/ubuntu/Yuling_20June2022/Blasia_helsinki_rawdata_pacbio/diamond_rawreads_clean/hmmer-3.3.2/src/
+     make
+     make check 
+
+download through conda
+
+     pip3 install scipy
+     pip3 install numpy
+     pip3 install matplotlib
+     pip3 install dendropy 
+     pip3 install pysam
+
+     conda install -c bioconda checkm-genome
+     pip3 install checkm-genome --upgrade --no-deps
+
+download the checkm data 
+
+     wget https://data.ace.uq.edu.au/public/CheckM_databases/checkm_data_2015_01_16.tar.gz
+     tar -xvf checkm_data_2015_01_16.tar.gz
+
+     checkm data setRoot ~/Yuling_20June2022/Blasia_helsinki_rawdata_pacbio/diamond_rawreads_clean/checkm_data
+
+give the data path to the system
+
+     export CHECKM_DATA_PATH=/home/ubuntu/Yuling_20June2022/Blasia_helsinki_rawdata_pacbio/diamond_rawreads_clean/checkm_data
+
+
+give the system path to the hmmer
+
+     export PATH=/home/ubuntu/Yuling_20June2022/Blasia_helsinki_rawdata_pacbio/diamond_rawreads_clean/hmmer-3.3.2/src/bin:$PATH
+
+running checkm
+
+     mkdir tmp
+
+     checkm lineage_wf --tmpdir tmp -t 12 --pplacer_threads 12 -x fasta --tab_table -f checkm.txt bins/ checkm_out/
+  
+combined the mapped reads and the unmapped viridiplantae reads together
+  
+       cat Viridiplantae_33090.fasta helsinki_mapped.fasta >new_viridiplantae.fasta
+
+using the combined reads to assemble the genome again using flye. 
+
+
+
+
+
+
+
+
+
+
+
+
